@@ -1,19 +1,31 @@
-# 🎈 Blank app template
+# 🎈 Calculator Loop – Streamlit App
 
-A simple Streamlit app template for you to modify!
+Uma calculadora simples desenvolvida com **Python** e **Streamlit**, que permite realizar operações matemáticas básicas de forma interativa através de uma interface web.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+---
 
-### How to run it on your own machine
+## 🚀 Funcionalidades
 
-1. Install the requirements
+- Entrada de dois números
+- Operações disponíveis:
+  - Adição (+)
+  - Subtração (-)
+  - Multiplicação (*)
+  - Divisão (/)
+- Validação de divisão por zero
+- Interface web simples e intuitiva
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+---
 
-2. Run the app
+## 🛠️ Tecnologias Utilizadas
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+- Python 3
+- Streamlit
+
+---
+
+## 📦 Pré-requisitos
+
+Antes de rodar o projeto, você precisa ter instalado:
+
+- Python 3.8 ou
