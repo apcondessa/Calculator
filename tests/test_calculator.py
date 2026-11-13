@@ -217,3 +217,51 @@ def test_summary_statistics_single_value_and_empty():
     assert summary_statistics([3])["Std. deviation (sample)"] == 0
     with pytest.raises(CalculationError):
         summary_statistics([])
+
+
+# --- Expressions and crossings ---------------------------------------------
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("(3 + 4) * 2^3", 56),
+        ("2 × 3 ÷ 4", 1.5),
+        ("sqrt(16) + 10 % 3", 5),
+        ("-2^2", -4),
+        ("2 * pi", 2 * math.pi),
+    ],
+)
+def test_evaluate_expression(expression, expected):
+    from calculator import evaluate_expression
+
+    assert evaluate_expression(expression) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("expression", "message"),
+    [
+        ("1/0", "Division by zero"),
+        ("sqrt(-1)", "no real result"),
+        ("x + 1", "Only numbers"),
+        ("9^9^9", "too large"),
+        ("2,5", "Use a dot"),
+        ("", "Enter a formula"),
+    ],
+)
+def test_evaluate_expression_errors(expression, message):
+    from calculator import evaluate_expression
+
+    with pytest.raises(CalculationError, match=message):
+        evaluate_expression(expression)
+
+
+def test_find_crossings():
+    from calculator import find_crossings
+
+    def crossings(f, g, a=-10, b=10):
+        return find_crossings(sample_formula(f, a, b), sample_formula(g, a, b))
+
+    assert crossings("x^2", "x + 2") == pytest.approx([-1, 2], abs=1e-3)
+    assert crossings("sin(x)", "0*x", -4, 4) == pytest.approx([-math.pi, 0, math.pi], abs=1e-3)
+    assert crossings("x^2 + 1", "0*x") == []
+    # 1/x jumps from -inf to +inf at 0 but never actually crosses y = 0
+    assert crossings("1/x", "0*x") == []

@@ -10,30 +10,33 @@ An interactive **multi-tool calculator** built with **Python** and **Streamlit**
 
 The project started as a terminal calculator and grew into a small, tested web application with the calculation logic kept separate from the user interface.
 
-![Basic tab with calculation history](docs/screenshots/basic.png)
+![Keypad calculator with history](docs/screenshots/basic.png)
 
 ---
 
 ## ✨ Features
 
-The app is organized into five tabs.
+The app is organized into five colourful tabs and supports light and dark mode.
 
 ### 🧮 Basic
-- Operations: addition (+), subtraction (-), multiplication (×), division (÷), power (^), modulo (mod), percentage (A% of B) and square root (√)
-- Clear error messages for invalid operations (division by zero, square root of a negative number, overflow…)
-- **Calculation history** with a *Clear history* button and *Download as CSV*
+- **Keypad calculator:** click colourful keys or type expressions such as `(3 + 4) × 2^3` or `sqrt(144) + 2^10`, then press `=` or Enter
+- A calculator-style display; keep calculating from the last answer
+- **Two-number mode:** pick an operation (+, −, ×, ÷, power, modulo, percentage, square root)
+- Clear error messages (division by zero, square root of a negative number, decimal comma instead of dot…)
+- **Calculation history** with *Clear history* and *Download as CSV*
 
 ### 💰 Financial
 - **Compound interest:** initial amount, monthly contributions, annual rate, years and compounding frequency, with a stacked chart of contributions vs. interest
 - **Loan / mortgage:** monthly payment, total paid and total interest, with a principal-vs-interest chart and the remaining balance over time
 - Year-by-year tables for both
 
-### 📏 Converter
-- Length, weight, volume, speed, data size and temperature
-- Shows the value converted to every unit of the chosen type
+### 🔄 Converter
+- **Units:** length, weight, volume, speed, data size and temperature, with the value shown in every unit of the chosen type
+- **💱 Currency (live rates):** convert between 30+ currencies (BRL, USD, EUR, GBP…) using the European Central Bank reference rates from [Frankfurter](https://frankfurter.dev), with a swap button and a rate-history chart (1 month to 5 years)
 
 ### 📈 Plotter
 - Type a formula of `x` (e.g. `x^2 - 3*x + 2` or `sin(x) * exp(-x/5)`) and see its graph over any range
+- **Compare two formulas** on the same chart and see where the curves cross
 - Supports `+ - * / ^ %`, brackets, `pi`, `e` and common math functions (`sin`, `cos`, `sqrt`, `log`, `exp`, `abs`…)
 - Formulas are parsed safely: only math is allowed, so no arbitrary code can run
 
@@ -59,8 +62,10 @@ The app is organized into five tabs.
 ## 🧰 Tech Stack
 
 - **Python 3**
-- **Streamlit** – web interface and charts
+- **Streamlit** – web interface, theme and charts
 - **pandas** – tables, CSV handling and statistics
+- **Altair** – currency history chart
+- **requests** + **Frankfurter API** – live exchange rates (no API key needed)
 - **pytest** – automated tests
 - **ruff** – linting and formatting
 - **GitHub Actions** – runs the linter and tests on every push and pull request
@@ -70,8 +75,11 @@ The app is organized into five tabs.
 ```
 ├── streamlit_app.py          # User interface (tabs, inputs, charts)
 ├── calculator.py             # Calculation logic, independent from the UI
+├── currency.py               # Live exchange rates (Frankfurter API)
+├── .streamlit/config.toml    # Colour theme (light and dark)
 ├── tests/
 │   ├── test_calculator.py    # Unit tests for the calculation logic
+│   ├── test_currency.py      # Currency tests with simulated API responses
 │   └── test_app.py           # Runs the app headlessly and checks each tab
 ├── docs/screenshots/         # Images used in this README
 ├── requirements.txt          # Packages needed to run the app

@@ -312,16 +312,21 @@ _BIN_OPS = {
 _UNARY_OPS = {ast.UAdd: lambda a: a, ast.USub: lambda a: -a}
 
 
-def compile_formula(formula: str) -> ast.Expression:
+def compile_formula(formula: str, allow_x: bool = True) -> ast.Expression:
     """
     Parse a formula such as ``"x^2 - 3*x + 2"`` and check that it only uses
     numbers, ``x``, arithmetic, the constants ``pi``/``e`` and the allowed
     math functions. Never uses ``eval``, so arbitrary code cannot run.
+
+    With ``allow_x=False`` the variable ``x`` is rejected, which is used for
+    plain expressions such as ``"(3 + 4) * 2^3"``.
     """
     if not formula.strip():
         raise CalculationError("Enter a formula.")
+    # Accept the symbols people type on calculators as well as Python operators
+    normalized = formula.replace("^", "**").replace("×", "*").replace("÷", "/")
     try:
-        tree = ast.parse(formula.replace("^", "**"), mode="eval")
+        tree = ast.parse(normalized, mode="eval")
     except SyntaxError as exc:
         raise CalculationError("The formula is not valid.") from exc
 
@@ -334,7 +339,7 @@ def compile_formula(formula: str) -> ast.Expression:
             continue
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
             continue
-        if isinstance(node, ast.Name) and (node.id == "x" or node.id in _CONSTANTS):
+        if isinstance(node, ast.Name) and ((node.id == "x" and allow_x) or node.id in _CONSTANTS):
             continue
         if isinstance(node, ast.Name) and node.id in _FUNCTIONS and id(node) in call_targets:
             continue  # validated as part of the Call below
@@ -353,7 +358,11 @@ def compile_formula(formula: str) -> ast.Expression:
         if isinstance(node, ast.Name):
             if node.id in _FUNCTIONS:
                 raise CalculationError(f"Use {node.id}(...) with brackets.")
-            raise CalculationError(f"Unknown name '{node.id}'. Use x as the variable.")
+            if allow_x:
+                raise CalculationError(f"Unknown name '{node.id}'. Use x as the variable.")
+            raise CalculationError(f"Unknown name '{node.id}'. Only numbers are allowed here.")
+        if isinstance(node, ast.Tuple):
+            raise CalculationError("Use a dot for decimals (2.5), not a comma (2,5).")
         raise CalculationError("The formula contains something that is not allowed.")
     return tree
 
@@ -383,6 +392,25 @@ def evaluate_formula(tree: ast.Expression, x: float) -> float:
     return float(result)
 
 
+def evaluate_expression(expression: str) -> float:
+    """
+    Evaluate a plain math expression such as ``"(3 + 4) * 2^3"`` or
+    ``"sqrt(16) + 10 % 3"`` safely and return the result.
+    """
+    tree = compile_formula(expression, allow_x=False)
+    try:
+        result = evaluate_formula(tree, 0.0)
+    except ZeroDivisionError as exc:
+        raise CalculationError("Division by zero is not allowed.") from exc
+    except OverflowError as exc:
+        raise CalculationError("The result is too large to calculate.") from exc
+    except ValueError as exc:
+        raise CalculationError("The expression has no real result (e.g. sqrt(-1)).") from exc
+    if math.isinf(result) or math.isnan(result):
+        raise CalculationError("The result is too large to calculate.")
+    return result
+
+
 def sample_formula(formula: str, x_min: float, x_max: float, points: int = 400) -> list[dict]:
     """
     Evaluate ``formula`` at evenly spaced points between ``x_min`` and ``x_max``.
@@ -407,3 +435,39 @@ def sample_formula(formula: str, x_min: float, x_max: float, points: int = 400) 
     if all(row["y"] is None for row in rows):
         raise CalculationError("The function is undefined over the whole range.")
     return rows
+
+
+def find_crossings(first: list[dict], second: list[dict]) -> list[float]:
+    """
+    Return the approximate x values where two sampled curves cross.
+
+    Both lists must come from :func:`sample_formula` with the same range and
+    number of points. Points where either curve is undefined are skipped.
+    """
+    crossings: list[float] = []
+    defined = [p["y"] for p in first + second if p["y"] is not None]
+    if not defined:
+        return crossings
+    # A sign change with a jump this large is a discontinuity (like 1/x at 0),
+    # not a real crossing
+    max_jump = 0.1 * ((max(defined) - min(defined)) or 1.0)
+    previous = None  # (x, difference) of the last point where both are defined
+    for a, b in zip(first, second, strict=True):
+        if a["y"] is None or b["y"] is None:
+            previous = None
+            continue
+        x, diff = a["x"], a["y"] - b["y"]
+        if diff == 0:
+            if not crossings or abs(crossings[-1] - x) > 1e-9:
+                crossings.append(x)
+        elif (
+            previous is not None
+            and previous[1] != 0
+            and (previous[1] < 0) != (diff < 0)
+            and abs(diff - previous[1]) <= max_jump
+        ):
+            # Linear interpolation between the two samples
+            x0, d0 = previous
+            crossings.append(x0 + (x - x0) * d0 / (d0 - diff))
+        previous = (x, diff)
+    return crossings
