@@ -16,7 +16,12 @@ The project started as a terminal calculator and grew into a small, tested web a
 
 ## ✨ Features
 
-The app is organized into five colourful tabs and supports light and dark mode.
+The app is organized into five colourful tabs, supports light and dark mode, and is available in **English and Portuguese**.
+
+### 🌐 English / Português
+- Switch language with one click at the top of the page; everything is translated (labels, buttons, charts, tables, units and error messages)
+- First-time visitors get the language of their browser, and the choice is kept in the link, so you can share the Portuguese version directly: <https://calculator-loomping.streamlit.app/?lang=pt>
+- In Portuguese, numbers use the Brazilian format (`1.234,56`), the keypad has a decimal comma, typed values like `2,5` are understood, and Brazilian CSV files (`;` separated, decimal comma) are read correctly
 
 ### 🧮 Basic
 - **Keypad calculator:** click colourful keys or type expressions such as `(3 + 4) × 2^3` or `sqrt(144) + 2^10`, then press `=` or Enter
@@ -57,6 +62,10 @@ The app is organized into five colourful tabs and supports light and dark mode.
 | --- | --- | --- |
 | ![Unit converter](docs/screenshots/converter.png) | ![Function plotter](docs/screenshots/plotter.png) | ![Statistics](docs/screenshots/statistics.png) |
 
+| Em português |
+| --- |
+| ![Loan calculator in Portuguese](docs/screenshots/portuguese.png) |
+
 ---
 
 ## 🧰 Tech Stack
@@ -76,10 +85,12 @@ The app is organized into five colourful tabs and supports light and dark mode.
 ├── streamlit_app.py          # User interface (tabs, inputs, charts)
 ├── calculator.py             # Calculation logic, independent from the UI
 ├── currency.py               # Live exchange rates (Frankfurter API)
+├── i18n.py                   # English / Portuguese translations
 ├── .streamlit/config.toml    # Colour theme (light and dark)
 ├── tests/
 │   ├── test_calculator.py    # Unit tests for the calculation logic
 │   ├── test_currency.py      # Currency tests with simulated API responses
+│   ├── test_i18n.py          # Checks every text and error has both languages
 │   └── test_app.py           # Runs the app headlessly and checks each tab
 ├── docs/screenshots/         # Images used in this README
 ├── requirements.txt          # Packages needed to run the app
