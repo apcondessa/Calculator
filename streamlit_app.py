@@ -3,10 +3,11 @@ Calculator Loop - Streamlit Application
 
 A web-based multi-tool calculator built with Streamlit. It has five tabs:
 
-- Basic: arithmetic with extra operations and a calculation history
+- Basic: a keypad calculator for expressions, or two numbers and an
+  operation, with a calculation history
 - Financial: compound interest and loan/mortgage calculators with charts
-- Converter: length, weight, volume, speed, data and temperature units
-- Plotter: graph a formula of x, such as x^2 - 3*x + 2
+- Converter: units (length, weight, temperature...) and live currency rates
+- Plotter: graph one or two formulas of x and find where they cross
 - Statistics: descriptive statistics for pasted numbers or an uploaded CSV
 
 Author: Ana Condessa
@@ -14,8 +15,10 @@ Author: Ana Condessa
 
 from __future__ import annotations
 
+import html
 from datetime import datetime
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -28,12 +31,23 @@ from calculator import (
     calculate,
     compound_interest_schedule,
     convert_units,
+    evaluate_expression,
+    find_crossings,
     format_expression,
     format_number,
     loan_payment,
     parse_numbers,
     sample_formula,
     summary_statistics,
+)
+from currency import (
+    POPULAR_CURRENCIES,
+    CurrencyError,
+    convert_amount,
+    get_currencies,
+    get_latest_rate,
+    get_rate_history,
+    sort_currencies,
 )
 
 # Default "from" and "to" units shown for each converter category
@@ -63,6 +77,101 @@ COMPOUNDING_OPTIONS = {
     "Daily": 365,
 }
 
+HISTORY_PERIODS = {"1 month": 30, "3 months": 91, "1 year": 365, "5 years": 1826}
+
+# Keypad layout: (label shown, text inserted, style group)
+KEYPAD = [
+    [("7", "7", "num"), ("8", "8", "num"), ("9", "9", "num"), ("÷", "÷", "op"), ("(", "(", "fn")],
+    [("4", "4", "num"), ("5", "5", "num"), ("6", "6", "num"), ("×", "×", "op"), (")", ")", "fn")],
+    [("1", "1", "num"), ("2", "2", "num"), ("3", "3", "num"), ("−", "-", "op"), ("^", "^", "fn")],
+    [
+        ("0", "0", "num"),
+        (".", ".", "num"),
+        ("π", "pi", "fn"),
+        ("+", "+", "op"),
+        ("√", "sqrt(", "fn"),
+    ],
+]
+
+CUSTOM_CSS = """
+<style>
+/* Gradient header */
+.hero {
+    background: linear-gradient(120deg, #7C3AED 0%, #6366F1 45%, #06B6D4 100%);
+    border-radius: 1.25rem;
+    padding: 1.6rem 1.8rem 1.4rem;
+    margin-bottom: 1.2rem;
+    color: #FFFFFF;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.25);
+}
+.hero h1 { color: #FFFFFF; margin: 0; padding: 0; font-size: 2.3rem; }
+.hero p { color: rgba(255, 255, 255, 0.88); margin: 0.35rem 0 0; font-size: 1.02rem; }
+
+/* Tabs: larger labels */
+.stTabs [data-baseweb="tab"] p { font-size: 1.02rem; font-weight: 600; }
+
+/* Metrics as coloured cards */
+[data-testid="stMetric"] {
+    background: rgba(124, 58, 237, 0.08);
+    border: 1px solid rgba(124, 58, 237, 0.25);
+    border-left: 6px solid #7C3AED;
+    border-radius: 0.9rem;
+    padding: 0.8rem 1rem;
+}
+[data-testid="stColumn"]:nth-of-type(2) [data-testid="stMetric"] {
+    background: rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.3);
+    border-left-color: #06B6D4;
+}
+[data-testid="stColumn"]:nth-of-type(3) [data-testid="stMetric"],
+[data-testid="stColumn"]:nth-of-type(4) [data-testid="stMetric"] {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.3);
+    border-left-color: #F59E0B;
+}
+
+/* Calculator display */
+.calc-display {
+    background: linear-gradient(135deg, #1E1B4B, #312E81);
+    border-radius: 1rem;
+    padding: 0.9rem 1.2rem;
+    margin: 0.3rem 0 0.8rem;
+    text-align: right;
+    font-family: "Source Code Pro", monospace;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.calc-display .expr { color: #C4B5FD; font-size: 1rem; min-height: 1.4rem; word-break: break-all; }
+.calc-display .result {
+    color: #FFFFFF; font-size: 2.2rem; font-weight: 700; word-break: break-all;
+}
+.calc-display .result.error { color: #FCA5A5; font-size: 1.1rem; font-weight: 600; }
+
+/* Keypad buttons */
+[class*="st-key-key_"] button { min-height: 3rem; }
+[class*="st-key-key_"] button p { font-size: 1.3rem; font-weight: 700; }
+[class*="st-key-key_op_"] button {
+    background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.5);
+}
+[class*="st-key-key_fn_"] button {
+    background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.5);
+}
+.st-key-key_clear button, .st-key-key_back button {
+    background: rgba(236, 72, 153, 0.15); border-color: rgba(236, 72, 153, 0.5);
+}
+
+/* Currency result banner */
+.fx-banner {
+    background: linear-gradient(120deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: 1rem;
+    padding: 1rem 1.2rem;
+    margin: 0.6rem 0;
+}
+.fx-banner .big { font-size: 1.9rem; font-weight: 700; }
+.fx-banner .small { opacity: 0.8; font-size: 0.92rem; }
+</style>
+"""
+
 
 def format_money(value: float) -> str:
     """Format a currency amount with thousands separators and two decimals."""
@@ -72,16 +181,18 @@ def format_money(value: float) -> str:
 def main():
     """Render the Streamlit application."""
     st.set_page_config(page_title="Calculator Loop", page_icon="🎈")
-    st.title("🎈 Calculator Loop")
-    st.caption(
-        "Basic math, financial planning, unit conversion, graphs and quick statistics in one place."
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+    st.markdown(
+        '<div class="hero"><h1>🎈 Calculator Loop</h1>'
+        "<p>Basic math, money, units &amp; currencies, graphs and statistics, all in one place."
+        "</p></div>",
+        unsafe_allow_html=True,
     )
 
-    if "history" not in st.session_state:
-        st.session_state.history = []
+    st.session_state.setdefault("history", [])
 
     basic_tab, financial_tab, converter_tab, plotter_tab, stats_tab = st.tabs(
-        ["🧮 Basic", "💰 Financial", "📏 Converter", "📈 Plotter", "📊 Statistics"]
+        ["🧮 Basic", "💰 Financial", "🔄 Converter", "📈 Plotter", "📊 Statistics"]
     )
     with basic_tab:
         render_basic_tab()
@@ -98,8 +209,108 @@ def main():
 # ---------------------------------------------------------------------------
 # Basic calculator
 # ---------------------------------------------------------------------------
+def add_to_history(expression: str, result: float) -> None:
+    """Record a successful calculation at the top of the history."""
+    st.session_state.history.insert(
+        0,
+        {"Time": datetime.now().strftime("%H:%M:%S"), "Expression": expression, "Result": result},
+    )
+
+
 def render_basic_tab():
-    """Arithmetic calculator with a calculation history."""
+    """Keypad / two-number calculator with a calculation history."""
+    mode = st.segmented_control(
+        "Mode",
+        ["⌨️ Keypad & expressions", "🔢 Two numbers"],
+        default="⌨️ Keypad & expressions",
+        key="basic_mode",
+    )
+    if mode == "🔢 Two numbers":
+        render_two_number_calculator()
+    else:
+        render_keypad_calculator()
+    render_history()
+
+
+# --- Keypad / expression mode ----------------------------------------------
+def _press(text: str) -> None:
+    st.session_state.expr = st.session_state.get("expr", "") + text
+
+
+def _backspace() -> None:
+    st.session_state.expr = st.session_state.get("expr", "")[:-1]
+
+
+def _clear() -> None:
+    st.session_state.expr = ""
+    st.session_state.expr_output = None
+
+
+def _evaluate() -> None:
+    expression = st.session_state.get("expr", "").strip()
+    if not expression:
+        return
+    try:
+        result = evaluate_expression(expression)
+    except CalculationError as error:
+        st.session_state.expr_output = {"expr": expression, "error": str(error)}
+        return
+    st.session_state.expr_output = {"expr": expression, "result": result}
+    add_to_history(expression, result)
+    # Continue from the answer, like a pocket calculator
+    st.session_state.expr = format_number(result).replace(",", "")
+
+
+def render_keypad_calculator():
+    """Calculator with clickable keys; expressions can also be typed."""
+    st.session_state.setdefault("expr", "")
+    st.session_state.setdefault("expr_output", None)
+
+    output = st.session_state.expr_output
+    if output is None:
+        expr_html, result_html = "&nbsp;", '<div class="result">0</div>'
+    elif "error" in output:
+        expr_html = html.escape(output["expr"])
+        result_html = f'<div class="result error">⚠️ {html.escape(output["error"])}</div>'
+    else:
+        expr_html = html.escape(output["expr"]) + " ="
+        result_html = f'<div class="result">{format_number(output["result"])}</div>'
+    st.markdown(
+        f'<div class="calc-display"><div class="expr">{expr_html}</div>{result_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.text_input(
+        "Expression",
+        key="expr",
+        placeholder="Type or use the keys, e.g. (3 + 4) × 2^3",
+        on_change=_evaluate,
+        help="Press Enter or = to calculate. Supports + − × ÷ ^ %, brackets, "
+        "pi, e and functions like sqrt(), sin(), log().",
+    )
+
+    for row_number, row in enumerate(KEYPAD):
+        cols = st.columns(5)
+        for col_number, (col, (label, text, group)) in enumerate(zip(cols, row, strict=True)):
+            col.button(
+                label,
+                key=f"key_{group}_{row_number}{col_number}",
+                on_click=_press,
+                args=(text,),
+                width="stretch",
+            )
+    cols = st.columns(5)
+    cols[0].button("C", key="key_clear", on_click=_clear, width="stretch")
+    cols[1].button("⌫", key="key_back", on_click=_backspace, width="stretch")
+    cols[2].button("%", key="key_op_mod", on_click=_press, args=("%",), width="stretch")
+    cols[3].button("e", key="key_fn_e", on_click=_press, args=("e",), width="stretch")
+    cols[4].button("=", key="key_equals", on_click=_evaluate, type="primary", width="stretch")
+    st.caption("`%` is the remainder (10 % 3 = 1). Use a dot for decimals: 2.5")
+
+
+# --- Two-number mode ---------------------------------------------------------
+def render_two_number_calculator():
+    """Pick an operation and enter two numbers."""
     operation = st.selectbox(
         "Operation",
         options=list(OPERATIONS),
@@ -128,16 +339,7 @@ def render_basic_tab():
             st.error(f"Error: {error}")
         else:
             st.metric(label=expression, value=format_number(result))
-            st.session_state.history.insert(
-                0,
-                {
-                    "Time": datetime.now().strftime("%H:%M:%S"),
-                    "Expression": expression,
-                    "Result": result,
-                },
-            )
-
-    render_history()
+            add_to_history(expression, result)
 
 
 def render_history():
@@ -173,11 +375,16 @@ def render_history():
 # ---------------------------------------------------------------------------
 def render_financial_tab():
     """Switch between the investment and loan calculators."""
-    mode = st.radio("Calculator", ["Compound interest", "Loan / mortgage"], horizontal=True)
-    if mode == "Compound interest":
-        render_compound_interest()
-    else:
+    mode = st.segmented_control(
+        "Calculator",
+        ["📈 Compound interest", "🏠 Loan / mortgage"],
+        default="📈 Compound interest",
+        key="financial_mode",
+    )
+    if mode == "🏠 Loan / mortgage":
         render_loan()
+    else:
+        render_compound_interest()
 
 
 def render_compound_interest():
@@ -257,9 +464,23 @@ def render_loan():
 
 
 # ---------------------------------------------------------------------------
-# Unit converter
+# Converter (units and currency)
 # ---------------------------------------------------------------------------
 def render_converter_tab():
+    """Switch between the unit and currency converters."""
+    mode = st.segmented_control(
+        "Convert",
+        ["📏 Units", "💱 Currency (live rates)"],
+        default="📏 Units",
+        key="converter_mode",
+    )
+    if mode == "💱 Currency (live rates)":
+        render_currency_converter()
+    else:
+        render_unit_converter()
+
+
+def render_unit_converter():
     """Convert a value between units of the same kind."""
     st.subheader("Unit converter")
     category = st.selectbox("Type of unit", list(UNITS))
@@ -299,11 +520,118 @@ def render_converter_tab():
         st.dataframe(table, hide_index=True, width="stretch")
 
 
+# Exchange rates are cached so the free API is called at most once per hour
+@st.cache_data(ttl=3600, show_spinner=False)
+def cached_currencies() -> dict[str, str]:
+    return get_currencies()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def cached_latest_rate(base: str, target: str) -> tuple[float, str]:
+    return get_latest_rate(base, target)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def cached_rate_history(base: str, target: str, days: int) -> list[dict]:
+    return get_rate_history(base, target, days)
+
+
+def _swap_currencies() -> None:
+    st.session_state.fx_from, st.session_state.fx_to = (
+        st.session_state.fx_to,
+        st.session_state.fx_from,
+    )
+
+
+def render_currency_converter():
+    """Convert money using the latest European Central Bank rates."""
+    st.subheader("Currency converter")
+
+    try:
+        names = cached_currencies()
+    except CurrencyError as error:
+        st.warning(f"{error} Showing the most common currencies only.")
+        names = {code: code for code in POPULAR_CURRENCIES}
+    codes = sort_currencies(list(names))
+    st.session_state.setdefault("fx_from", "USD" if "USD" in codes else codes[0])
+    st.session_state.setdefault("fx_to", "BRL" if "BRL" in codes else codes[-1])
+
+    def label(code: str) -> str:
+        return f"{code} — {names[code]}" if names.get(code, code) != code else code
+
+    col_amount, col_from, col_swap, col_to = st.columns([2, 3, 1, 3], vertical_alignment="bottom")
+    amount = col_amount.number_input("Amount", min_value=0.0, value=100.0, step=10.0)
+    base = col_from.selectbox("From", codes, format_func=label, key="fx_from")
+    col_swap.button("⇄", on_click=_swap_currencies, help="Swap currencies", width="stretch")
+    target = col_to.selectbox("To", codes, format_func=label, key="fx_to")
+
+    try:
+        with st.spinner("Loading the latest rate…"):
+            rate, rate_date = cached_latest_rate(base, target)
+    except CurrencyError as error:
+        st.error(str(error))
+        return
+
+    converted = convert_amount(amount, rate)
+    st.markdown(
+        f'<div class="fx-banner"><div class="small">{format_money(amount)} {base} =</div>'
+        f'<div class="big">{format_money(converted)} {target}</div>'
+        f'<div class="small">1 {base} = {format_number(rate, 4)} {target} · '
+        f"1 {target} = {format_number(1 / rate, 4) if rate else '—'} {base} · "
+        f"rate from {rate_date}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    if base == target:
+        return
+
+    period = st.segmented_control(
+        "History", list(HISTORY_PERIODS), default="3 months", key="fx_period"
+    )
+    try:
+        history = cached_rate_history(base, target, HISTORY_PERIODS[period or "3 months"])
+    except CurrencyError as error:
+        st.info(str(error))
+        return
+    if len(history) < 2:
+        st.info("Not enough history available for this pair.")
+        return
+
+    first, last = history[0]["Rate"], history[-1]["Rate"]
+    rates = [row["Rate"] for row in history]
+    m_1, m_2, m_3 = st.columns(3)
+    m_1.metric(
+        "Rate now",
+        format_number(last, 4),
+        delta=f"{(last - first) / first * 100:+.2f}% in {period}",
+    )
+    m_2.metric("Lowest", format_number(min(rates), 4))
+    m_3.metric("Highest", format_number(max(rates), 4))
+
+    chart_data = pd.DataFrame(history)
+    chart_data["Date"] = pd.to_datetime(chart_data["Date"])
+    chart = (
+        alt.Chart(chart_data)
+        .mark_line(strokeWidth=3, interpolate="monotone", point=alt.OverlayMarkDef(size=12))
+        .encode(
+            x=alt.X("Date:T", title=None),
+            # Zoom in on the actual range instead of starting at zero
+            y=alt.Y("Rate:Q", title=f"{target} per 1 {base}", scale=alt.Scale(zero=False)),
+            tooltip=[alt.Tooltip("Date:T"), alt.Tooltip("Rate:Q", format=",.4f")],
+        )
+    )
+    st.altair_chart(chart, width="stretch")
+    st.caption(
+        "Rates: European Central Bank reference rates via frankfurter.dev, "
+        "updated once per working day. For information only."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Function plotter
 # ---------------------------------------------------------------------------
 def render_plotter_tab():
-    """Plot a formula of x over a chosen range."""
+    """Plot one or two formulas of x over a chosen range."""
     st.subheader("Function plotter")
     st.write(
         "Type a formula using **x**. Supported: `+ - * / ^ %`, brackets, `pi`, `e`, "
@@ -311,7 +639,11 @@ def render_plotter_tab():
     )
 
     example = st.selectbox("Start from an example", FORMULA_EXAMPLES)
-    formula = st.text_input("y =", value=example, key=f"formula_{example}")
+    col_1, col_2 = st.columns(2)
+    formula = col_1.text_input("y₁ =", value=example, key=f"formula_{example}")
+    compare = col_2.text_input(
+        "y₂ = (optional, to compare)", value="", placeholder="e.g. 2*x + 1", key="formula_2"
+    )
 
     col_min, col_max = st.columns(2)
     x_min = col_min.number_input("x from", value=-10.0, step=1.0, format="%g")
@@ -320,18 +652,42 @@ def render_plotter_tab():
     try:
         rows = sample_formula(formula, x_min, x_max)
     except CalculationError as error:
-        st.error(f"Error: {error}")
+        st.error(f"y₁: {error}")
         return
 
-    points = pd.DataFrame(rows).set_index("x").rename(columns={"y": f"y = {formula}"})
+    second_rows = None
+    if compare.strip():
+        try:
+            second_rows = sample_formula(compare, x_min, x_max)
+        except CalculationError as error:
+            st.error(f"y₂: {error}")
+
+    points = pd.DataFrame(rows).set_index("x").rename(columns={"y": f"y₁ = {formula}"})
+    if second_rows is not None:
+        points[f"y₂ = {compare}"] = [row["y"] for row in second_rows]
     st.line_chart(points, x_label="x", y_label="y")
 
+    if any(row["y"] is None for row in rows) or (
+        second_rows and any(row["y"] is None for row in second_rows)
+    ):
+        st.caption("Gaps in a line are values of x where that function is undefined.")
+
     defined = [row["y"] for row in rows if row["y"] is not None]
-    if len(defined) < len(rows):
-        st.caption("Gaps in the line are values of x where the function is undefined.")
+    if second_rows is None:
+        m_1, m_2 = st.columns(2)
+        m_1.metric("Lowest y in range", format_number(min(defined), 4))
+        m_2.metric("Highest y in range", format_number(max(defined), 4))
+        return
+
+    crossings = find_crossings(rows, second_rows)
     m_1, m_2 = st.columns(2)
-    m_1.metric("Lowest y in range", format_number(min(defined), 4))
-    m_2.metric("Highest y in range", format_number(max(defined), 4))
+    m_1.metric("Crossing points", len(crossings))
+    if crossings:
+        shown = ", ".join(f"x ≈ {format_number(x, 3)}" for x in crossings[:6])
+        more = f" (+{len(crossings) - 6} more)" if len(crossings) > 6 else ""
+        m_2.metric("Where the curves meet", shown + more)
+    else:
+        m_2.metric("Where the curves meet", "They don't cross here")
 
 
 # ---------------------------------------------------------------------------
@@ -340,9 +696,14 @@ def render_plotter_tab():
 def render_statistics_tab():
     """Descriptive statistics for pasted numbers or a CSV column."""
     st.subheader("Descriptive statistics")
-    source = st.radio("Data source", ["Type or paste numbers", "Upload CSV"], horizontal=True)
+    source = st.segmented_control(
+        "Data source",
+        ["✍️ Type or paste numbers", "📁 Upload CSV"],
+        default="✍️ Type or paste numbers",
+        key="stats_source",
+    )
 
-    values = get_values(source)
+    values = get_values(source or "✍️ Type or paste numbers")
     if values is None:
         return
 
@@ -387,7 +748,7 @@ def render_statistics_tab():
 
 def get_values(source: str) -> list[float] | None:
     """Collect numbers from the chosen data source, or ``None`` if not ready."""
-    if source == "Type or paste numbers":
+    if source != "📁 Upload CSV":
         text = st.text_area(
             "Numbers (separated by commas, spaces or new lines)",
             value="12, 15, 18, 22, 22, 25, 30, 41",

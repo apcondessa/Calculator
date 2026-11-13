@@ -1,0 +1,20 @@
+# Colour theme for Calculator Loop (applies locally and on Streamlit Cloud)
+
+[theme]
+baseRadius = "0.75rem"
+buttonRadius = "0.75rem"
+showWidgetBorder = true
+
+[theme.light]
+primaryColor = "#7C3AED"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F3FF"
+textColor = "#1E1B4B"
+chartCategoricalColors = ["#7C3AED", "#06B6D4", "#F59E0B", "#EC4899", "#10B981"]
+
+[theme.dark]
+primaryColor = "#A78BFA"
+backgroundColor = "#0F0D1A"
+secondaryBackgroundColor = "#1C1830"
+textColor = "#EDE9FE"
+chartCategoricalColors = ["#A78BFA", "#22D3EE", "#FBBF24", "#F472B6", "#34D399"]
