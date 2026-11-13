@@ -1,20 +1,22 @@
 # 🎈 Calculator Loop – Streamlit Application
 
-A simple and interactive **web-based calculator** built with **Python** and **Streamlit**, designed to perform basic arithmetic operations through a clean and user-friendly interface.
+[![CI](https://github.com/apcondessa/Calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/apcondessa/Calculator/actions/workflows/ci.yml)
 
-This project demonstrates the correct adaptation of a terminal-based calculator into a Streamlit application, following best practices for reactive web apps.
+<!-- After deploying, replace YOUR-APP-URL below and uncomment this line:
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](YOUR-APP-URL)
+-->
 
----
+An interactive **multi-tool calculator** built with **Python** and **Streamlit**: basic math with a calculation history, financial planning, unit conversion, a function plotter and quick descriptive statistics, all in one web app.
 
-## 📋 Overview
+The project started as a terminal calculator and grew into a small, tested web application with the calculation logic kept separate from the user interface.
 
-The Calculator Loop app allows users to input two numbers, select an arithmetic operation, and instantly view the result. It handles common edge cases, such as division by zero, and provides immediate visual feedback.
+![Basic tab with calculation history](docs/screenshots/basic.png)
 
 ---
 
 ## ✨ Features
 
-The app is organized into three tabs:
+The app is organized into five tabs.
 
 ### 🧮 Basic
 - Operations: addition (+), subtraction (-), multiplication (×), division (÷), power (^), modulo (mod), percentage (A% of B) and square root (√)
@@ -22,9 +24,18 @@ The app is organized into three tabs:
 - **Calculation history** with a *Clear history* button and *Download as CSV*
 
 ### 💰 Financial
-- Compound interest calculator with an initial amount, monthly contributions, annual rate, years and compounding frequency
-- Final balance, total contributed and interest earned
-- Stacked bar chart of contributions vs. interest, plus a year-by-year table
+- **Compound interest:** initial amount, monthly contributions, annual rate, years and compounding frequency, with a stacked chart of contributions vs. interest
+- **Loan / mortgage:** monthly payment, total paid and total interest, with a principal-vs-interest chart and the remaining balance over time
+- Year-by-year tables for both
+
+### 📏 Converter
+- Length, weight, volume, speed, data size and temperature
+- Shows the value converted to every unit of the chosen type
+
+### 📈 Plotter
+- Type a formula of `x` (e.g. `x^2 - 3*x + 2` or `sin(x) * exp(-x/5)`) and see its graph over any range
+- Supports `+ - * / ^ %`, brackets, `pi`, `e` and common math functions (`sin`, `cos`, `sqrt`, `log`, `exp`, `abs`…)
+- Formulas are parsed safely: only math is allowed, so no arbitrary code can run
 
 ### 📊 Statistics
 - Type/paste a list of numbers or upload a CSV and pick a numeric column
@@ -33,22 +44,46 @@ The app is organized into three tabs:
 
 ---
 
+## 📸 Screenshots
+
+| Financial – compound interest | Financial – loan |
+| --- | --- |
+| ![Compound interest](docs/screenshots/financial.png) | ![Loan calculator](docs/screenshots/loan.png) |
+
+| Converter | Plotter | Statistics |
+| --- | --- | --- |
+| ![Unit converter](docs/screenshots/converter.png) | ![Function plotter](docs/screenshots/plotter.png) | ![Statistics](docs/screenshots/statistics.png) |
+
+---
+
 ## 🧰 Tech Stack
 
 - **Python 3**
-- **Streamlit**
-- **pandas**
+- **Streamlit** – web interface and charts
+- **pandas** – tables, CSV handling and statistics
+- **pytest** – automated tests
+- **ruff** – linting and formatting
+- **GitHub Actions** – runs the linter and tests on every push and pull request
 
 ### Project structure
 
-- `streamlit_app.py` – the user interface (tabs, inputs, charts)
-- `calculator.py` – the calculation logic, independent from the UI
+```
+├── streamlit_app.py          # User interface (tabs, inputs, charts)
+├── calculator.py             # Calculation logic, independent from the UI
+├── tests/
+│   ├── test_calculator.py    # Unit tests for the calculation logic
+│   └── test_app.py           # Runs the app headlessly and checks each tab
+├── docs/screenshots/         # Images used in this README
+├── requirements.txt          # Packages needed to run the app
+├── requirements-dev.txt      # Extra packages for testing and linting
+└── .github/workflows/ci.yml  # Continuous integration
+```
 
 ---
 
 ## 📦 Requirements
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - pip (Python package manager)
 
 ---
@@ -82,6 +117,31 @@ The app is organized into three tabs:
    ```
 
 5. Open the URL shown in the terminal (usually <http://localhost:8501>) in your browser.
+
+---
+
+## 🧪 Running the Tests
+
+Install the development dependencies, then run the linter and the tests:
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+pytest
+```
+
+The same checks run automatically on GitHub for every push and pull request (see the **CI** badge at the top).
+
+---
+
+## ☁️ Deploying to Streamlit Community Cloud
+
+The app can be published for free so anyone can use it in the browser:
+
+1. Go to <https://share.streamlit.io> and sign in with GitHub.
+2. Click **Create app** → **Deploy a public app from GitHub**.
+3. Choose the repository `apcondessa/Calculator`, branch `main`, and main file `streamlit_app.py`.
+4. Click **Deploy**. Every new push to `main` updates the live app automatically.
 
 ---
 
