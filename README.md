@@ -14,14 +14,22 @@ The Calculator Loop app allows users to input two numbers, select an arithmetic 
 
 ## ✨ Features
 
-- Interactive numeric inputs
-- Supported operations:
-  - Addition (+)
-  - Subtraction (-)
-  - Multiplication (*)
-  - Division (/)
-- Error handling for invalid operations (e.g., division by zero)
-- Responsive web interface powered by Streamlit
+The app is organized into three tabs:
+
+### 🧮 Basic
+- Operations: addition (+), subtraction (-), multiplication (×), division (÷), power (^), modulo (mod), percentage (A% of B) and square root (√)
+- Clear error messages for invalid operations (division by zero, square root of a negative number, overflow…)
+- **Calculation history** with a *Clear history* button and *Download as CSV*
+
+### 💰 Financial
+- Compound interest calculator with an initial amount, monthly contributions, annual rate, years and compounding frequency
+- Final balance, total contributed and interest earned
+- Stacked bar chart of contributions vs. interest, plus a year-by-year table
+
+### 📊 Statistics
+- Type/paste a list of numbers or upload a CSV and pick a numeric column
+- Count, sum, mean, median, standard deviation, min, max, range, quartiles and IQR
+- Histogram with an adjustable number of bins
 
 ---
 
@@ -29,6 +37,12 @@ The Calculator Loop app allows users to input two numbers, select an arithmetic 
 
 - **Python 3**
 - **Streamlit**
+- **pandas**
+
+### Project structure
+
+- `streamlit_app.py` – the user interface (tabs, inputs, charts)
+- `calculator.py` – the calculation logic, independent from the UI
 
 ---
 
