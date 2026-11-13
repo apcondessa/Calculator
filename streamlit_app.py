@@ -1,6 +1,3 @@
-import streamlit as st
-
-st.title("🎈Calculator Loomp")
 """
 Calculator Loop - Streamlit Application
 
