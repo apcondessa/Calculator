@@ -36,3 +36,41 @@ The Calculator Loop app allows users to input two numbers, select an arithmetic 
 
 - Python 3.8 or higher
 - pip (Python package manager)
+
+---
+
+## 🚀 How to Run
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/apcondessa/Calculator.git
+   cd Calculator
+   ```
+
+2. **(Optional) Create and activate a virtual environment**
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install the dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Start the app**
+
+   ```bash
+   streamlit run streamlit_app.py
+   ```
+
+5. Open the URL shown in the terminal (usually <http://localhost:8501>) in your browser.
+
+---
+
+## 📄 License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
