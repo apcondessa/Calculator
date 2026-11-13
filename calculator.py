@@ -31,7 +31,17 @@ OPERATIONS = {**BINARY_OPERATIONS, **UNARY_OPERATIONS}
 
 
 class CalculationError(ValueError):
-    """Raised when an operation cannot be performed (e.g. division by zero)."""
+    """
+    Raised when an operation cannot be performed (e.g. division by zero).
+
+    The message is kept as a template plus values, so the app can show it in
+    another language; ``str(error)`` gives the English text.
+    """
+
+    def __init__(self, template: str, **params):
+        self.template = template
+        self.params = params
+        super().__init__(template.format(**params))
 
 
 def calculate(a: float, b: float, operation: str) -> float:
@@ -50,7 +60,7 @@ def calculate(a: float, b: float, operation: str) -> float:
         try:
             result = a**b
         except (OverflowError, ZeroDivisionError) as exc:
-            raise CalculationError(f"Cannot compute {a} ^ {b}.") from exc
+            raise CalculationError("Cannot compute {a} ^ {b}.", a=a, b=b) from exc
         if isinstance(result, complex):
             raise CalculationError(
                 "A negative number raised to a fractional power has no real result."
@@ -66,7 +76,7 @@ def calculate(a: float, b: float, operation: str) -> float:
         if a < 0:
             raise CalculationError("Cannot take the square root of a negative number.")
         return math.sqrt(a)
-    raise CalculationError(f"Unknown operation: {operation}")
+    raise CalculationError("Unknown operation: {operation}", operation=operation)
 
 
 def format_expression(a: float, b: float, operation: str) -> str:
@@ -128,15 +138,23 @@ def compound_interest_schedule(
     return rows
 
 
-def parse_numbers(text: str) -> list[float]:
-    """Parse numbers separated by commas, semicolons, spaces or new lines."""
-    tokens = text.replace(";", " ").replace(",", " ").split()
+def parse_numbers(text: str, decimal_comma: bool = False) -> list[float]:
+    """
+    Parse numbers separated by commas, semicolons, spaces or new lines.
+
+    With ``decimal_comma=True`` (Portuguese style) the comma is the decimal
+    separator, so numbers are separated by semicolons, spaces or new lines.
+    """
+    if decimal_comma:
+        tokens = [token.replace(",", ".") for token in text.replace(";", " ").split()]
+    else:
+        tokens = text.replace(";", " ").replace(",", " ").split()
     numbers = []
     for token in tokens:
         try:
             numbers.append(float(token))
         except ValueError as exc:
-            raise CalculationError(f"'{token}' is not a valid number.") from exc
+            raise CalculationError("'{token}' is not a valid number.", token=token) from exc
     return numbers
 
 
@@ -254,7 +272,7 @@ def _to_celsius(value: float, unit: str) -> float:
         return (value - 32) * 5 / 9
     if unit == "Kelvin":
         return value - 273.15
-    raise CalculationError(f"Unknown temperature unit: {unit}")
+    raise CalculationError("Unknown temperature unit: {unit}", unit=unit)
 
 
 def _from_celsius(value: float, unit: str) -> float:
@@ -264,16 +282,16 @@ def _from_celsius(value: float, unit: str) -> float:
         return value * 9 / 5 + 32
     if unit == "Kelvin":
         return value + 273.15
-    raise CalculationError(f"Unknown temperature unit: {unit}")
+    raise CalculationError("Unknown temperature unit: {unit}", unit=unit)
 
 
 def convert_units(value: float, category: str, from_unit: str, to_unit: str) -> float:
     """Convert ``value`` between two units of the same category."""
     if category not in UNITS:
-        raise CalculationError(f"Unknown category: {category}")
+        raise CalculationError("Unknown category: {category}", category=category)
     units = UNITS[category]
     if from_unit not in units or to_unit not in units:
-        raise CalculationError(f"Unknown unit for {category}.")
+        raise CalculationError("Unknown unit for {category}.", category=category)
     if category == "Temperature":
         celsius = _to_celsius(value, from_unit)
         if celsius < -273.15:
@@ -353,14 +371,18 @@ def compile_formula(formula: str, allow_x: bool = True) -> ast.Expression:
             continue
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if node.func.id in _FUNCTIONS:
-                raise CalculationError(f"{node.func.id}() takes exactly one argument.")
-            raise CalculationError(f"Unknown function '{node.func.id}'.")
+                raise CalculationError("{name}() takes exactly one argument.", name=node.func.id)
+            raise CalculationError("Unknown function '{name}'.", name=node.func.id)
         if isinstance(node, ast.Name):
             if node.id in _FUNCTIONS:
-                raise CalculationError(f"Use {node.id}(...) with brackets.")
+                raise CalculationError("Use {name}(...) with brackets.", name=node.id)
             if allow_x:
-                raise CalculationError(f"Unknown name '{node.id}'. Use x as the variable.")
-            raise CalculationError(f"Unknown name '{node.id}'. Only numbers are allowed here.")
+                raise CalculationError(
+                    "Unknown name '{name}'. Use x as the variable.", name=node.id
+                )
+            raise CalculationError(
+                "Unknown name '{name}'. Only numbers are allowed here.", name=node.id
+            )
         if isinstance(node, ast.Tuple):
             raise CalculationError("Use a dot for decimals (2.5), not a comma (2,5).")
         raise CalculationError("The formula contains something that is not allowed.")

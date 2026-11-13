@@ -20,7 +20,12 @@ POPULAR_CURRENCIES = ["BRL", "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "C
 
 
 class CurrencyError(RuntimeError):
-    """Raised when exchange rates cannot be loaded."""
+    """Raised when exchange rates cannot be loaded (message kept as a template)."""
+
+    def __init__(self, template: str, **params):
+        self.template = template
+        self.params = params
+        super().__init__(template.format(**params))
 
 
 def _get(path: str, params: dict | None = None) -> dict:
@@ -60,7 +65,9 @@ def get_latest_rate(base: str, target: str) -> tuple[float, str]:
     try:
         return float(data["rates"][target]), data["date"]
     except (KeyError, TypeError, ValueError) as exc:
-        raise CurrencyError(f"No exchange rate available for {base} → {target}.") from exc
+        raise CurrencyError(
+            "No exchange rate available for {base} → {target}.", base=base, target=target
+        ) from exc
 
 
 def get_rate_history(base: str, target: str, days: int) -> list[dict]:
