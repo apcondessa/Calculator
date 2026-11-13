@@ -232,3 +232,29 @@ def test_dropdown_choice_survives_language_switch(app):
     box = app.selectbox(key="invest_compounding__pt")
     assert box.value == "Quarterly"
     assert box.format_func(box.value) == "Trimestral"
+
+
+def test_app_reloads_helper_modules_left_over_from_an_older_version():
+    """
+    Reproduces a crash seen on Streamlit Cloud after a deploy: the new
+    streamlit_app.py ran with the previous calculator.py still in memory, whose
+    parse_numbers() did not accept decimal_comma yet.
+    """
+    import calculator
+
+    def old_parse_numbers(text):  # the signature before the language switch
+        raise AssertionError("the outdated module should have been reloaded")
+
+    saved = dict(calculator.__dict__)
+    try:
+        calculator.parse_numbers = old_parse_numbers
+        calculator.LOADED_MTIME = 0.0  # "imported from an older version of the file"
+
+        at = AppTest.from_file(APP_PATH, default_timeout=30).run()
+        assert not at.exception
+        assert metric_values(at)["Mean"] == "23.125"
+        assert calculator.parse_numbers is not old_parse_numbers
+    finally:
+        # Put the module back exactly as it was so other tests keep their classes
+        calculator.__dict__.clear()
+        calculator.__dict__.update(saved)

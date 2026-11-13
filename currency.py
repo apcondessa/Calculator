@@ -8,9 +8,13 @@ No API key is needed.
 
 from __future__ import annotations
 
+import os
 from datetime import date, timedelta
 
 import requests
+
+# Lets the app detect that this file changed since it was imported (see streamlit_app.py)
+LOADED_MTIME = os.path.getmtime(__file__)
 
 API_URL = "https://api.frankfurter.dev/v1"
 TIMEOUT_SECONDS = 10
