@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/apcondessa/Calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/apcondessa/Calculator/actions/workflows/ci.yml)
 
-<!-- After deploying, replace YOUR-APP-URL below and uncomment this line:
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](YOUR-APP-URL)
--->
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://calculator-loomping.streamlit.app/)
 
 An interactive **multi-tool calculator** built with **Python** and **Streamlit**: basic math with a calculation history, financial planning, unit conversion, a function plotter and quick descriptive statistics, all in one web app.
+
+**👉 Try it live: <https://calculator-loomping.streamlit.app/>**
 
 The project started as a terminal calculator and grew into a small, tested web application with the calculation logic kept separate from the user interface.
 
@@ -142,6 +142,8 @@ The app can be published for free so anyone can use it in the browser:
 2. Click **Create app** → **Deploy a public app from GitHub**.
 3. Choose the repository `apcondessa/Calculator`, branch `main`, and main file `streamlit_app.py`.
 4. Click **Deploy**. Every new push to `main` updates the live app automatically.
+
+The live version of this project is at <https://calculator-loomping.streamlit.app/>.
 
 ---
 
