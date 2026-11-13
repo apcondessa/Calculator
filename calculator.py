@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import ast
 import math
+import os
 from statistics import mean, median, pstdev, stdev
+
+# Lets the app detect that this file changed since it was imported (see streamlit_app.py)
+LOADED_MTIME = os.path.getmtime(__file__)
 
 # Operations that use both numbers
 BINARY_OPERATIONS = {

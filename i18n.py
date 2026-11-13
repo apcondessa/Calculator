@@ -8,6 +8,11 @@ translated from their English template in ``ERRORS``.
 
 from __future__ import annotations
 
+import os
+
+# Lets the app detect that this file changed since it was imported (see streamlit_app.py)
+LOADED_MTIME = os.path.getmtime(__file__)
+
 LANGUAGES = {"en": "English", "pt": "Português"}
 DEFAULT_LANGUAGE = "en"
 

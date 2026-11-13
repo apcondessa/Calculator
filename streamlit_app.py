@@ -18,11 +18,37 @@ Author: Ana Condessa
 from __future__ import annotations
 
 import html
+import importlib
+import os
 from datetime import datetime
 
 import altair as alt
 import pandas as pd
 import streamlit as st
+
+import calculator
+import currency
+import i18n
+
+
+def reload_if_changed(module) -> None:
+    """
+    Reload a helper module if its file changed after it was imported.
+
+    Streamlit reruns this script on every interaction but keeps other modules
+    in memory. After an update (e.g. a new deploy on Streamlit Cloud) the app
+    could otherwise mix the new streamlit_app.py with old helper modules.
+    """
+    try:
+        changed = getattr(module, "LOADED_MTIME", None) != os.path.getmtime(module.__file__)
+    except OSError:
+        return
+    if changed:
+        importlib.reload(module)
+
+
+for _module in (i18n, calculator, currency):
+    reload_if_changed(_module)
 
 from calculator import (
     OPERATIONS,
